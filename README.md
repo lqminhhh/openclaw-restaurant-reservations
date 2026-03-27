@@ -445,9 +445,9 @@ GET /reservation-result/{call_id}
 
 Do not rely on `latest.json` when a `call_id` is available, because another call may overwrite it.
 
-## Troubleshooting
+## XVI. Troubleshooting
 
-### `ngrok: command not found`
+### 1. `ngrok: command not found`
 
 Install ngrok and verify:
 
@@ -455,7 +455,7 @@ Install ngrok and verify:
 ngrok version
 ```
 
-### Vapi returns `Numbers Bought On Vapi Have A Daily Outbound Call Limit`
+### 2. Vapi returns `Numbers Bought On Vapi Have A Daily Outbound Call Limit`
 
 This usually means you are using a free Vapi-managed number that has hit its daily outbound quota.
 
@@ -465,7 +465,7 @@ Common fixes:
 - switch to a different number
 - import your own Twilio number into Vapi
 
-### `/reservation-result/{call_id}` stays `pending`
+### 3. `/reservation-result/{call_id}` stays `pending`
 
 Check:
 
@@ -474,15 +474,15 @@ Check:
 - Vapi server URL points to the current ngrok URL
 - the call actually completed
 
-### The transcript is noisy or the reservation name is slightly wrong
+### 4. The transcript is noisy or the reservation name is slightly wrong
 
 Phone transcripts are imperfect. OpenClaw should treat the transcript semantically, but if name fidelity matters for your workflow, tune the Vapi prompt and re-test.
 
-### Call connected but did not reach a restaurant
+### 5. Call connected but did not reach a restaurant
 
 Double-check the destination number. Test calls to personal numbers or voicemail can still validate the pipeline, but they do not prove a real restaurant reservation flow.
 
-## XVI. References
+## XVII. References
 
 - Python `venv` docs: <https://docs.python.org/3/library/venv.html>
 - FastAPI docs: <https://fastapi.tiangolo.com/>

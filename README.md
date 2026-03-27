@@ -1,27 +1,40 @@
-# Restaurant Reservation OpenClaw Skill
+# 👨‍🍳 Restaurant Reservation OpenClaw Skill
 
 This repository contains a local OpenClaw skill that starts restaurant reservation phone calls through Vapi, receives the final webhook result through a FastAPI server, stores the result locally, and lets OpenClaw check the result in a follow-up message.
 
 The current MVP flow is:
 
-1. OpenClaw starts the reservation call and returns immediately with a `call_id`
-2. Vapi places the outbound call
-3. Vapi sends the final webhook result to the local FastAPI server
-4. The server stores the final normalized result by `call_id`
-5. OpenClaw checks the result later in a second message
+<img src="assets/workflow.png" alt="Alt text" style="display: block; margin: auto;">
 
-## Repo Layout
+## I. Repo Layout
 
-- `SKILL.md`: OpenClaw skill instructions
-- `server/app.py`: FastAPI app with the local HTTP endpoints
-- `server/vapi_client.py`: Vapi outbound call client
-- `server/webhook_handler.py`: webhook processor and result normalizer
-- `server/openclaw_bridge.py`: simple local script to trigger a call from a JSON file
-- `prompts/vapi_reservation_prompt.md`: base prompt used for outbound calls
-- `config/sample_request.json`: sample reservation request
-- `outputs/`: generated raw and normalized call artifacts
+```
+restaurant-reservation/
+├── SKILL.md                           # OpenClaw skill instructions
+├── README.md                          # Setup and usage guide
+├── requirements.txt                   # Python dependencies
+├── assets/
+│   └── workflow.png                   # Workflow diagram
+├── config/
+│   └── sample_request.json            # Sample reservation request payload
+├── demo/
+│   └── test_cases.md                  # Manual testing notes / scenarios
+├── prompts/
+│   └── vapi_reservation_prompt.md     # Base prompt for outbound calls
+├── server/
+│   ├── app.py                         # FastAPI server and local endpoints
+│   ├── openclaw_bridge.py             # Trigger a call from a local JSON file
+│   ├── vapi_client.py                 # Vapi outbound call client
+│   └── webhook_handler.py             # Webhook processor and result normalizer
+└── outputs/
+    ├── calls/                         # Saved raw webhook payloads
+    └── reservations/
+        ├── latest.json                # Latest normalized completed result
+        ├── latest_summary.txt         # Latest human-readable summary
+        └── by_call_id/                # Per-call normalized results
+```
 
-## Prerequisites
+## II. Prerequisites
 
 Install these before setting up the project:
 
@@ -36,7 +49,7 @@ Notes:
 - Free Vapi-managed phone numbers can hit daily outbound limits.
 - For real outbound calling, importing your own Twilio number into Vapi is usually more reliable.
 
-## 1. Clone the Repository
+## III. Clone the Repository
 
 ```bash
 git clone <YOUR_REPO_URL>
@@ -45,7 +58,7 @@ cd restaurant-reservation
 
 If you are installing this as a local OpenClaw skill, place this folder inside your local OpenClaw `skills/` directory or wherever your OpenClaw installation expects local skills to live.
 
-## 2. Add This Skill to OpenClaw
+## IV. Add This Skill to OpenClaw
 
 OpenClaw loads skills from these locations:
 
@@ -91,7 +104,7 @@ If it still does not appear in the skill list:
 - verify the YAML frontmatter in `SKILL.md` is valid
 - start a new OpenClaw session after copying the skill
 
-## 3. Create and Activate a Virtual Environment
+## V. Create and Activate a Virtual Environment
 
 From the project root:
 
@@ -106,7 +119,7 @@ Upgrade pip if you want:
 python -m pip install --upgrade pip
 ```
 
-## 4. Install Python Dependencies
+## VI. Install Python Dependencies
 
 Install the project dependencies:
 
@@ -123,7 +136,7 @@ The core runtime dependencies are:
 
 The repo also includes optional helper dependencies for scripts that may still exist in the workspace, such as `openai` and the Google auth libraries.
 
-## 5. Install ngrok
+## VII. Install ngrok
 
 On macOS with Homebrew:
 
@@ -141,7 +154,7 @@ If Homebrew is not installed, use the official download page:
 
 <https://ngrok.com/downloads>
 
-## 6. Create Your `.env`
+## VIII. Create Your `.env`
 
 Create a `.env` file in the project root.
 
@@ -172,7 +185,7 @@ How to find the Vapi IDs:
 - `VAPI_ASSISTANT_ID`: open the assistant in the Vapi dashboard and copy the ID from the URL or assistant details
 - `VAPI_PHONE_NUMBER_ID`: open the phone number in the Vapi dashboard and copy the ID from the URL or phone number details
 
-## 7. Configure Vapi
+## IX. Configure Vapi
 
 You need three pieces configured in Vapi:
 
@@ -218,7 +231,7 @@ https://YOUR-NGROK-URL/webhook/vapi
 
 If Vapi uses the label `Server URL` instead of `Webhook URL`, use that field.
 
-## 8. Start the FastAPI Server
+## X. Start the FastAPI Server
 
 From the project root:
 
@@ -241,7 +254,7 @@ Health check:
 curl http://localhost:3000/health
 ```
 
-## 9. Start ngrok
+## XI. Start ngrok
 
 From another terminal:
 
@@ -257,7 +270,7 @@ https://YOUR-NGROK-URL/webhook/vapi
 
 If you restart ngrok, the URL changes unless you have a reserved domain. Update Vapi when that happens.
 
-## 10. Test the Webhook Locally First
+## XII. Test the Webhook Locally First
 
 Before testing a real phone call, verify the webhook pipeline.
 
@@ -293,7 +306,7 @@ Then check:
 - `outputs/reservations/latest.json`
 - `outputs/reservations/latest_summary.txt`
 
-## 11. Start a Reservation Call Manually
+## XIII. Start a Reservation Call Manually
 
 You can test the backend directly without OpenClaw.
 
@@ -356,7 +369,7 @@ If the call is done, you will get:
 }
 ```
 
-## 12. Use It Through OpenClaw
+## XIV. Use It Through OpenClaw
 
 This skill is designed for a 2-message MVP.
 
@@ -415,7 +428,7 @@ If there is no saved call_id from this conversation, do not guess. Tell me that 
 - an explicit call_id to check
 ```
 
-## 13. Output Files
+## XV. Output Files
 
 The server writes these runtime artifacts:
 
@@ -469,7 +482,7 @@ Phone transcripts are imperfect. OpenClaw should treat the transcript semantical
 
 Double-check the destination number. Test calls to personal numbers or voicemail can still validate the pipeline, but they do not prove a real restaurant reservation flow.
 
-## References
+## XVI. References
 
 - Python `venv` docs: <https://docs.python.org/3/library/venv.html>
 - FastAPI docs: <https://fastapi.tiangolo.com/>

@@ -468,3 +468,18 @@ Phone transcripts are imperfect. OpenClaw should treat the transcript semantical
 ### Call connected but did not reach a restaurant
 
 Double-check the destination number. Test calls to personal numbers or voicemail can still validate the pipeline, but they do not prove a real restaurant reservation flow.
+
+## References
+
+- Python `venv` docs: <https://docs.python.org/3/library/venv.html>
+- FastAPI docs: <https://fastapi.tiangolo.com/>
+- Uvicorn docs: <https://www.uvicorn.org/>
+- python-dotenv docs: <https://pypi.org/project/python-dotenv/>
+- Requests docs: <https://requests.readthedocs.io/en/latest/>
+- ngrok downloads: <https://ngrok.com/downloads>
+- Vapi phone calling overview: <https://docs.vapi.ai/phone-calling>
+- Vapi outbound calling: <https://docs.vapi.ai/phone-calling/outbound-calls>
+- Vapi server URLs: <https://docs.vapi.ai/server-url>
+- Vapi setting server URLs: <https://docs.vapi.ai/server-url/setting-server-urls>
+- Vapi import number from Twilio: <https://docs.vapi.ai/phone-numbers/import-twilio/>
+- Gmail API Python quickstart: <https://developers.google.com/workspace/gmail/api/quickstart/python>

@@ -1,0 +1,14 @@
+.env
+.venv/
+.DS_Store
+__pycache__/
+*.pyc
+
+# Local auth / credentials
+config/gmail_credentials.json
+config/gmail_token.json
+config/gmail_config.json
+config/vapi_assistant.json
+
+# Generated runtime artifacts
+outputs/

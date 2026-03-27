@@ -1,0 +1,11 @@
+{
+  "restaurant_name": "Dragon Village",
+  "restaurant_phone": "+17404048938",
+  "reservation_name": "Minh",
+  "party_size": 5,
+  "date": "Friday",
+  "preferred_time": "7:00 PM",
+  "fallback_times": ["7:30 PM", "8:00 PM", "8:30 PM"],
+  "special_requests": "Indoor seating if possible",
+  "user_callback": "+17404048938"
+}

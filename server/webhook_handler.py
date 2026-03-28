@@ -1,3 +1,9 @@
+"""Normalize incoming Vapi webhook payloads into stable local reservation artifacts.
+
+This module filters noisy events, extracts transcript and metadata from final call events,
+derives a simplified reservation result, and writes the result to local output files.
+"""
+
 import json
 import os
 import re
@@ -40,14 +46,37 @@ NOISY_EVENT_TYPES = {
 
 
 def utc_now_iso() -> str:
+    """Return the current UTC timestamp in ISO 8601 format.
+
+    Parameters:
+        None.
+    Returns:
+        str: The current UTC timestamp formatted as an ISO string.
+    """
     return datetime.now(timezone.utc).isoformat()
 
 
 def timestamp_slug() -> str:
+    """Create a filesystem-safe UTC timestamp string for output filenames.
+
+    Parameters:
+        None.
+    Returns:
+        str: A compact UTC timestamp including microseconds.
+    """
     return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
 
 
 def safe_get(obj: Any, path: list[str], default: Any = None) -> Any:
+    """Safely walk a nested dictionary path and return a default when the path is missing.
+
+    Parameters:
+        obj (Any): The starting object, usually a parsed webhook payload.
+        path (list[str]): The ordered list of dictionary keys to follow.
+        default (Any): The fallback value to return if the path cannot be fully resolved.
+    Returns:
+        Any: The resolved nested value or the provided default.
+    """
     current = obj
     for key in path:
         if not isinstance(current, dict):
@@ -59,17 +88,40 @@ def safe_get(obj: Any, path: list[str], default: Any = None) -> Any:
 
 
 def write_json(path: Path, data: Dict[str, Any]) -> None:
+    """Write a dictionary to disk as pretty-printed JSON.
+
+    Parameters:
+        path (Path): Destination path for the JSON file.
+        data (Dict[str, Any]): The dictionary to serialize.
+    Returns:
+        None: The function writes the file to disk.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
 def write_text(path: Path, content: str) -> None:
+    """Write plain text content to disk, creating parent directories if needed.
+
+    Parameters:
+        path (Path): Destination path for the text file.
+        content (str): Text content to write.
+    Returns:
+        None: The function writes the file to disk.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
 
 
 def extract_event_type(payload: Dict[str, Any]) -> str:
+    """Extract the most useful event type label from a webhook payload.
+
+    Parameters:
+        payload (Dict[str, Any]): The parsed webhook payload from Vapi.
+    Returns:
+        str: The best available event type string, or `unknown` if one cannot be found.
+    """
     return str(
         safe_get(payload, ["message", "type"])
         or payload.get("type")
@@ -78,6 +130,13 @@ def extract_event_type(payload: Dict[str, Any]) -> str:
 
 
 def extract_call_id(payload: Dict[str, Any]) -> Optional[str]:
+    """Extract the Vapi call ID from the various payload shapes seen in webhook events.
+
+    Parameters:
+        payload (Dict[str, Any]): The parsed webhook payload from Vapi.
+    Returns:
+        Optional[str]: The call ID if one is present, otherwise `None`.
+    """
     call_id = (
         safe_get(payload, ["message", "call", "id"])
         or safe_get(payload, ["call", "id"])
@@ -90,6 +149,13 @@ def extract_call_id(payload: Dict[str, Any]) -> Optional[str]:
 
 
 def extract_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract reservation metadata and call-level numbers from a webhook payload.
+
+    Parameters:
+        payload (Dict[str, Any]): The parsed webhook payload from Vapi.
+    Returns:
+        Dict[str, Any]: A normalized metadata dictionary used by later summary and persistence steps.
+    """
     metadata = (
         safe_get(payload, ["message", "call", "metadata"])
         or safe_get(payload, ["call", "metadata"])
@@ -134,6 +200,13 @@ def extract_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def extract_conversation_messages(payload: Dict[str, Any]) -> list[Dict[str, Any]]:
+    """Pull the raw conversation message list from any supported payload location.
+
+    Parameters:
+        payload (Dict[str, Any]): The parsed webhook payload from Vapi.
+    Returns:
+        list[Dict[str, Any]]: The message list if found, otherwise an empty list.
+    """
     messages = (
         safe_get(payload, ["message", "artifact", "messages"])
         or safe_get(payload, ["message", "messages"])
@@ -145,6 +218,13 @@ def extract_conversation_messages(payload: Dict[str, Any]) -> list[Dict[str, Any
 
 
 def normalize_role(role: Optional[str]) -> str:
+    """Normalize message role names into the local transcript format.
+
+    Parameters:
+        role (Optional[str]): The original role label from the webhook message.
+    Returns:
+        str: A normalized role label such as `assistant`, `user`, or `unknown`.
+    """
     if not role:
         return "unknown"
     role = role.lower()
@@ -154,6 +234,13 @@ def normalize_role(role: Optional[str]) -> str:
 
 
 def find_transcript(payload: Dict[str, Any]) -> Optional[str]:
+    """Convert the message list inside a webhook payload into a plain-text transcript.
+
+    Parameters:
+        payload (Dict[str, Any]): The parsed webhook payload from Vapi.
+    Returns:
+        Optional[str]: A newline-delimited transcript string, or `None` if no messages are available.
+    """
     messages = extract_conversation_messages(payload)
     if not messages:
         return None
@@ -176,6 +263,13 @@ def find_transcript(payload: Dict[str, Any]) -> Optional[str]:
 
 
 def find_summary(payload: Dict[str, Any]) -> Optional[str]:
+    """Extract any summary text already attached to the webhook payload.
+
+    Parameters:
+        payload (Dict[str, Any]): The parsed webhook payload from Vapi.
+    Returns:
+        Optional[str]: The first non-empty summary string found, or `None`.
+    """
     candidates = [
         safe_get(payload, ["message", "analysis", "summary"]),
         safe_get(payload, ["message", "summary"]),
@@ -191,6 +285,14 @@ def find_summary(payload: Dict[str, Any]) -> Optional[str]:
 
 
 def classify_status(summary: Optional[str], transcript: Optional[str]) -> str:
+    """Infer a simplified reservation outcome label from the summary and transcript text.
+
+    Parameters:
+        summary (Optional[str]): Summary text extracted from the webhook payload, if available.
+        transcript (Optional[str]): Plain-text transcript extracted from the webhook payload, if available.
+    Returns:
+        str: One of the local status labels such as `confirmed`, `unavailable`, or `unknown`.
+    """
     text = " ".join([summary or "", transcript or ""]).lower()
 
     confirmed_phrases = [
@@ -253,6 +355,14 @@ def classify_status(summary: Optional[str], transcript: Optional[str]) -> str:
 
 
 def should_normalize_event(event_type: str, payload: Dict[str, Any]) -> bool:
+    """Decide whether a webhook event contains enough signal to produce a normalized result.
+
+    Parameters:
+        event_type (str): The extracted event type label for the webhook payload.
+        payload (Dict[str, Any]): The parsed webhook payload from Vapi.
+    Returns:
+        bool: `True` when the event should generate or update a normalized reservation artifact.
+    """
     if event_type in FINAL_EVENT_TYPES:
         return True
 
@@ -268,6 +378,14 @@ def should_normalize_event(event_type: str, payload: Dict[str, Any]) -> bool:
 
 
 def should_save_raw_event(event_type: str, payload: Dict[str, Any]) -> bool:
+    """Decide whether a raw webhook payload should be written to the raw events folder.
+
+    Parameters:
+        event_type (str): The extracted event type label for the webhook payload.
+        payload (Dict[str, Any]): The parsed webhook payload from Vapi.
+    Returns:
+        bool: `True` when the raw payload is useful enough to save for debugging.
+    """
     if event_type in IMPORTANT_RAW_EVENT_TYPES:
         return True
 
@@ -286,10 +404,24 @@ def should_save_raw_event(event_type: str, payload: Dict[str, Any]) -> bool:
 
 
 def sanitize_filename(value: str) -> str:
+    """Convert an arbitrary string into a filesystem-safe filename fragment.
+
+    Parameters:
+        value (str): The original string value to sanitize.
+    Returns:
+        str: A version of the string containing only alphanumeric characters, hyphens, underscores, and substitutions.
+    """
     return "".join(c if c.isalnum() or c in {"-", "_"} else "_" for c in value)
 
 
 def normalize_time_string(t: str) -> str:
+    """Normalize a loosely formatted time string into a more consistent display format.
+
+    Parameters:
+        t (str): The original time string extracted from transcript text.
+    Returns:
+        str: A normalized time string with consistent spacing and AM/PM capitalization.
+    """
     t = t.strip()
     t = re.sub(r"\s+", " ", t)
     t = t.replace("am", "AM").replace("pm", "PM").replace("Am", "AM").replace("Pm", "PM")
@@ -299,6 +431,13 @@ def normalize_time_string(t: str) -> str:
 
 
 def find_time_mentions(text: str) -> list[str]:
+    """Extract time mentions from transcript text using numeric and simple word-based patterns.
+
+    Parameters:
+        text (str): Transcript text to scan for time references.
+    Returns:
+        list[str]: A de-duplicated list of normalized time mentions in discovery order.
+    """
     numeric = re.findall(r"\b(?:[1-9]|1[0-2])(?::[0-5][0-9])?\s?(?:AM|PM|am|pm)\b", text)
     word_map = {
         "one": "1:00 PM",
@@ -331,6 +470,14 @@ def find_time_mentions(text: str) -> list[str]:
 
 
 def extract_confirmed_time(transcript: Optional[str], requested_time: Optional[str]) -> Optional[str]:
+    """Infer the most likely confirmed reservation time from the transcript.
+
+    Parameters:
+        transcript (Optional[str]): The call transcript text, if available.
+        requested_time (Optional[str]): The original requested reservation time from metadata.
+    Returns:
+        Optional[str]: The inferred confirmed time, or the requested time / `None` when no better signal is found.
+    """
     if not transcript:
         return requested_time
 
@@ -371,6 +518,13 @@ def extract_confirmed_time(transcript: Optional[str], requested_time: Optional[s
     return requested_time
 
 def build_summary_text(normalized: Dict[str, Any]) -> str:
+    """Build a human-readable text summary from a normalized reservation result.
+
+    Parameters:
+        normalized (Dict[str, Any]): The normalized reservation artifact written by this module.
+    Returns:
+        str: A plain-text summary suitable for quick inspection.
+    """
     request = normalized.get("request", {}) or {}
 
     lines = [
@@ -390,6 +544,13 @@ def build_summary_text(normalized: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 def process_vapi_webhook(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Process a Vapi webhook payload and update local raw and normalized artifacts.
+
+    Parameters:
+        payload (Dict[str, Any]): The parsed webhook payload sent by Vapi.
+    Returns:
+        Dict[str, Any]: A summary of what was saved, including file paths, event type, call ID, and normalization status.
+    """
     ts = timestamp_slug()
     event_type = extract_event_type(payload)
     call_id = extract_call_id(payload) or f"no_call_id_{ts}"

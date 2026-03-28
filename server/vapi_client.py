@@ -1,3 +1,9 @@
+"""Build and send outbound reservation call requests to the Vapi API.
+
+This module loads environment configuration, assembles a call-specific prompt,
+validates the reservation input, and creates the outbound phone call request.
+"""
+
 import json
 import os
 from pathlib import Path
@@ -17,6 +23,13 @@ VAPI_ASSISTANT_ID = os.getenv("VAPI_ASSISTANT_ID")
 VAPI_PHONE_NUMBER_ID = os.getenv("VAPI_PHONE_NUMBER_ID")
 
 def load_prompt_template() -> str:
+    """Load the base reservation prompt template from disk if it exists.
+
+    Parameters:
+        None.
+    Returns:
+        str: The prompt template text used as the foundation for runtime prompt construction.
+    """
     if PROMPT_PATH.exists():
         return PROMPT_PATH.read_text(encoding="utf-8")
     return (
@@ -26,6 +39,13 @@ def load_prompt_template() -> str:
 
 
 def build_runtime_prompt(request_data: Dict[str, Any]) -> str:
+    """Merge the base prompt with reservation-specific details for a single phone call.
+
+    Parameters:
+        request_data (Dict[str, Any]): Reservation details such as restaurant name, party size, date, and fallback times.
+    Returns:
+        str: A complete runtime prompt ready to send to Vapi as the system message.
+    """
     base_prompt = load_prompt_template()
 
     restaurant_name = request_data["restaurant_name"]
@@ -66,6 +86,13 @@ def build_runtime_prompt(request_data: Dict[str, Any]) -> str:
 
 
 def validate_request_data(request_data: Dict[str, Any]) -> None:
+    """Validate required reservation fields and required Vapi environment variables.
+
+    Parameters:
+        request_data (Dict[str, Any]): Reservation details submitted by the caller.
+    Returns:
+        None: The function raises `ValueError` if required fields or configuration values are missing.
+    """
     required_fields = [
         "restaurant_name",
         "restaurant_phone",
@@ -89,6 +116,13 @@ def validate_request_data(request_data: Dict[str, Any]) -> None:
 
 
 def start_outbound_reservation_call(request_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Create an outbound reservation call through the Vapi API.
+
+    Parameters:
+        request_data (Dict[str, Any]): Reservation request fields used to build the prompt and Vapi payload.
+    Returns:
+        Dict[str, Any]: The parsed Vapi API response for the newly created outbound call.
+    """
     validate_request_data(request_data)
 
     runtime_prompt = build_runtime_prompt(request_data)

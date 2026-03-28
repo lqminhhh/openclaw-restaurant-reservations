@@ -1,3 +1,9 @@
+"""Expose the local HTTP API used by OpenClaw and Vapi for this skill.
+
+This FastAPI app starts outbound reservation calls, receives Vapi webhook events,
+and returns per-call results so OpenClaw can check them later.
+"""
+
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from pathlib import Path
@@ -21,6 +27,13 @@ app = FastAPI(title="Restaurant Reservation Webhook Server")
 
 @app.get("/health")
 async def health() -> dict:
+    """Return a lightweight health response for the local FastAPI service.
+
+    Parameters:
+        None.
+    Returns:
+        dict: Basic service metadata including status and configured port.
+    """
     return {
         "status": "ok",
         "service": "restaurant-reservation-webhook",
@@ -30,6 +43,13 @@ async def health() -> dict:
 
 @app.post("/webhook/vapi")
 async def vapi_webhook(request: Request):
+    """Receive a Vapi webhook payload and hand it to the local webhook processor.
+
+    Parameters:
+        request (Request): The incoming FastAPI request carrying the webhook JSON body.
+    Returns:
+        JSONResponse: A success payload with saved file paths, or a 400 response for invalid JSON.
+    """
     try:
         payload = await request.json()
     except Exception:
@@ -61,6 +81,13 @@ async def vapi_webhook(request: Request):
 
 @app.post("/start-reservation")
 async def start_reservation(request: Request):
+    """Start an outbound reservation call using the JSON body sent by the caller.
+
+    Parameters:
+        request (Request): The incoming FastAPI request containing reservation details.
+    Returns:
+        dict: A start confirmation with the resolved `call_id` for later result lookup.
+    """
     try:
         request_data = await request.json()
     except Exception:
@@ -87,6 +114,13 @@ async def start_reservation(request: Request):
 
 @app.get("/reservation-result/{call_id}")
 async def reservation_result(call_id: str):
+    """Fetch the saved normalized result for a specific reservation call.
+
+    Parameters:
+        call_id (str): The Vapi call ID used as the lookup key in the results directory.
+    Returns:
+        dict: A pending status if the result file does not exist yet, or a completed payload with the stored result.
+    """
     result_path = BY_CALL_ID_DIR / f"{call_id}.json"
 
     if not result_path.exists():
